@@ -1,77 +1,85 @@
 # Multi-Agent Research Assistant
 
-A sophisticated AI research assistant powered by Google's Gemini AI and a multi-agent architecture with JSON storage.
+A Python-based research assistant combining FastAPI, Gemini, and local JSON storage for rapid MVP iteration.
 
 ## Overview
 
-This project implements a multi-agent research system that:
-- Accepts user research queries
-- Uses specialized agents for different research tasks
-- Leverages Gemini 2.5 Pro and Flash models for optimal performance
-- Stores all data in JSON format for transparency and debugging
-- Provides REST API endpoints for research operations
+This project implements a research workflow with:
+- a FastAPI backend for orchestration and data access
+- a multi-agent pipeline for search, summarization, fact-checking, and report generation
+- Gemini AI for content generation
+- JSON file storage for projects, reports, users, and caches
+- a Streamlit frontend for easy local exploration
 
-## Features
+## What the system does
 
-- **Multi-Agent Architecture**: Separate agents for search, summarization, fact-checking, and report generation
-- **Gemini AI Integration**: Uses Gemini 2.5 Pro for complex tasks and Flash for fast operations
-- **JSON Storage**: Fast, transparent data storage with no database overhead
-- **REST API**: FastAPI-based backend with comprehensive endpoints
-- **Source Ranking**: Intelligent ranking of research sources by relevance
-- **Fact-Checking**: Automated verification of claims against multiple sources
-- **Professional Reports**: AI-generated comprehensive research reports
+- Accepts research briefs via REST API or Streamlit
+- Creates a local JSON-backed project record
+- Uses a Search Agent to gather source content
+- Uses a Summarization Agent to extract insights and structure
+- Uses a Fact-Check Agent to verify claims across sources
+- Uses a Report Agent to build a polished Markdown report
+- Saves outputs under `data/projects/` and `data/reports/`
 
-## Architecture
+## Core Architecture
 
 ```
 User Query
    ↓
-Controller
+FastAPI Controller
    ↓
-├── Search Agent (Web scraping, content extraction)
-├── Summarization Agent (Gemini Pro - insights, themes)
-├── Fact-Check Agent (Cross-reference verification)
-└── Report Agent (Final report generation)
+Search Agent
    ↓
-JSON Storage (projects/, reports/, users/, cache/)
+Summarization Agent
    ↓
-Frontend/Dashboard
+Fact-Check Agent
+   ↓
+Report Agent
+   ↓
+JSON Storage
+   ↓
+Streamlit / API Client
 ```
-
-## Tech Stack
-
-- **Backend**: Python + FastAPI
-- **AI**: Google Gemini 2.5 Pro + Gemini Flash
-- **Storage**: JSON files (MVP approach)
-- **Web Scraping**: BeautifulSoup + newspaper3k
-- **Data**: Pydantic models
 
 ## Project Structure
 
 ```
 AI_Research_Agent/
 ├── main.py                 # FastAPI application entry point
-├── controller.py           # Main orchestration logic
+├── controller.py           # Orchestration workflow
 ├── requirements.txt        # Python dependencies
-├── README.md              # Project documentation
+├── README.md               # Project documentation
+├── streamlit_app.py        # Streamlit frontend UI
 ├── agents/
-│   ├── searchAgent.py     # Web search and content extraction
-│   ├── summarizeAgent.py  # Content summarization
-│   ├── factCheckAgent.py  # Claim verification
-│   └── reportAgent.py     # Report generation
+│   ├── searchAgent.py      # Search and content extraction
+│   ├── summarizeAgent.py   # Content summarization
+│   ├── factCheckAgent.py   # Claim verification
+│   └── reportAgent.py      # Report generation
 ├── services/
-│   ├── geminiService.py   # Gemini AI integration
-│   └── storageService.py  # JSON storage operations
+│   ├── geminiService.py    # Gemini API integration
+│   └── storageService.py   # JSON persistence layer
 ├── routes/
-│   └── researchRoutes.py  # FastAPI route handlers
+│   └── researchRoutes.py   # API route definitions
 ├── utils/
-│   └── jsonDB.py          # Database abstraction layer
+│   └── jsonDB.py           # Storage abstraction
 └── data/
-    ├── users/             # User data
-    ├── projects/          # Research projects
-    ├── reports/           # Generated reports
-    └── cache/             # Search result caching
+    ├── users/              # User JSON documents
+    ├── projects/           # Project JSON documents
+    ├── reports/            # Generated report JSON documents
+    └── cache/              # Cached search results
 ```
+
+## Dependencies
+
+- `fastapi`
+- `uvicorn`
+- `google-generativeai`
+- `requests`
+- `beautifulsoup4`
+- `pydantic`
+- `python-dotenv`
+- `aiofiles`
+- `streamlit`
 
 ## Installation
 
@@ -81,27 +89,59 @@ AI_Research_Agent/
 
 ### Setup
 
-1. Clone or download the repository
+1. Clone the repository.
 2. Install dependencies:
+
 ```bash
-pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
 ```
 
-3. Create a `.env` file in the project root with your Gemini API key:
+3. Create a `.env` file in the project root:
+
 ```env
 GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
-4. Run the application:
+4. Create the data folders if they do not already exist:
+
 ```bash
-python main.py
+mkdir -p data/users data/projects data/reports data/cache
 ```
 
-The API will be available at `http://localhost:8000`
+## Running the backend
+
+Start the FastAPI app:
+
+```bash
+python3 main.py
+```
+
+or:
+
+```bash
+python3 -m uvicorn main:app --reload
+```
+
+The API will be available at `http://localhost:8000`.
+
+## Running the Streamlit frontend
+
+In a separate terminal:
+
+```bash
+streamlit run streamlit_app.py
+```
+
+The Streamlit app can:
+- start a new research project
+- refresh project status
+- load saved JSON project files from `data/projects/`
+- display sources, summary, fact checks, and final report in readable format
 
 ## API Endpoints
 
 ### Start Research
+
 ```http
 POST /api/research
 Content-Type: application/json
@@ -112,152 +152,62 @@ Content-Type: application/json
 }
 ```
 
-### Get Project Status
+Response:
+
+```json
+{
+  "project_id": "<project-id>",
+  "status": "started",
+  "message": "Research project started successfully"
+}
+```
+
+### Get Project Data
+
 ```http
 GET /api/project/{project_id}
 ```
 
-### Get Research Report
+Returns the full project JSON, including status, sources, summary, fact checks, and final report.
+
+### Get Report
+
 ```http
 GET /api/report/{report_id}
 ```
 
-### Get User Projects
+Returns the saved report JSON document.
+
+### List User Projects
+
 ```http
 GET /api/projects/{user_id}
 ```
 
-## Streamlit Frontend
+Returns all projects for the given user.
 
-A Streamlit frontend is included for easy local use. Start the backend API first, then run the Streamlit app:
+## Data Storage
 
-```bash
-python main.py
-```
+Project and report data are persisted as JSON files in `data/projects/` and `data/reports/`.
+Each document includes metadata like `_id`, `_created_at`, and `_updated_at`.
 
-In a separate terminal:
+## Notes
 
-```bash
-streamlit run streamlit_app.py
-```
+- The search agent currently uses static example content and web scraping for MVP behavior.
+- The Gemini service is configured via `GEMINI_API_KEY` and uses `gemini-2.5-pro` and `gemini-1.5-flash` models.
+- Local JSON storage is intentionally simple for fast iteration and debugging.
 
-The Streamlit interface lets you:
-- submit a research query
-- monitor project status
-- view final report content, summary, sources, and fact checks
+## Extending the system
 
-The app is configured to call the local API at `http://localhost:8000/api`.
-
-## Usage Example
-
-```python
-import requests
-
-# Start research
-response = requests.post("http://localhost:8000/api/research", json={
-    "user_id": "user_001",
-    "query": "How are AI agents transforming business operations?"
-})
-
-project_id = response.json()["project_id"]
-
-# Check status
-status = requests.get(f"http://localhost:8000/api/project/{project_id}")
-print(status.json())
-```
-
-## Configuration
-
-The system uses environment variables for configuration:
-- `GEMINI_API_KEY`: Your Google Gemini API key
-
-## Development
-
-### Adding New Agents
-1. Create a new agent class in `agents/`
-2. Implement the required methods
-3. Update the `controller.py` to include the new agent
-4. Add any necessary routes in `routes/`
-
-### Extending Storage
-The JSON storage system is designed for easy migration. When ready to scale:
-1. PostgreSQL for relational data
-2. MongoDB for document storage
-3. Vector database for semantic search
+- Add or improve search integrations in `agents/searchAgent.py`
+- Refine summarization prompts in `agents/summarizeAgent.py`
+- Improve verification logic in `agents/factCheckAgent.py`
+- Add new API endpoints in `routes/researchRoutes.py`
 
 ## License
 
 This project is open source. See LICENSE file for details.
 
-## Usage
-
-Run the AI research agent:
-```bash
-python main.py
-```
-
-When prompted, enter your research query:
-```
-What can i help you research? What are the latest developments in quantum computing?
-```
-
-### Output Format
-
-The agent returns a structured response containing:
-- **topic**: The research topic
-- **summary**: Comprehensive summary of findings
-- **sources**: List of sources consulted
-- **tools_used**: Tools leveraged for the research (search, wiki, save)
-
-### Example Output
-
-```json
-{
-  "topic": "Quantum Computing Developments",
-  "summary": "Recent breakthroughs in quantum computing include...",
-  "sources": ["https://example.com", "Wikipedia: Quantum Computing"],
-  "tools_used": ["search", "wiki", "save_text_to_file"]
-}
-```
-
-## Tools Available
-
-### 1. Web Search Tool
-- **Provider**: DuckDuckGo
-- **Function**: Searches the internet for current information
-- **Use Case**: Finding latest news, articles, and web resources
-
-### 2. Wikipedia Tool
-- **Provider**: Wikipedia API
-- **Function**: Queries Wikipedia for comprehensive topic information
-- **Configuration**: Returns top 1 result with up to 100 characters of content
-- **Use Case**: Getting structured, reliable background information
-
-### 3. Save Tool
-- **Function**: Persists research output to `research_output.txt`
-- **Features**: Automatic timestamping, append mode for multiple queries
-- **Use Case**: Building a research archive
-
-## Dependencies
-
-- **langchain**: Framework for building LLM applications
-- **langchain-anthropic**: Anthropic Claude integration for LangChain
-- **langchain-community**: Community tools and integrations
-- **langchain-core**: Core LangChain functionality
-- **pydantic**: Data validation and serialization
-- **python-dotenv**: Environment variable management
-- **duckduckgo-search**: Web search functionality
-- **wikipedia**: Wikipedia API wrapper
-- **langgraph**: Graph-based LLM orchestration
-
-## Configuration
-
-The agent is preconfigured with:
-- **Model**: Claude 3.5 Sonnet (claude-3-5-sonnet-20241022)
-- **Parser**: Pydantic-based output validation
-- **Verbosity**: Enabled for debugging and monitoring
-
-## Output Storage
 
 Research results are automatically saved to `research_output.txt` with:
 - Timestamp of when the research was conducted
